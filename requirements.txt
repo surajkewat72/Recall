@@ -1,0 +1,13 @@
+fastapi>=0.104.1
+uvicorn[standard]>=0.23.2
+pydantic>=2.4.2
+pydantic-settings>=2.0.3
+python-dotenv>=1.0.0
+google-api-python-client>=2.108.0
+google-auth-httplib2>=0.1.1
+google-auth-oauthlib>=1.1.0
+langchain>=0.0.334
+openai>=1.2.3
+qdrant-client>=1.6.4 # Default vector store for scaffolding
+sentence-transformers>=2.2.2
+tiktoken>=0.5.1
