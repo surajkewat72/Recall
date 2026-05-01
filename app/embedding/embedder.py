@@ -1,36 +1,57 @@
+import os
 from typing import List
-from sentence_transformers import SentenceTransformer
+from openai import OpenAI
+from app.core.config import settings
 
 class Embedder:
     """
-    Handles generation of vector embeddings from text chunks using SentenceTransformers.
+    Handles text embedding generation using OpenAI's API.
+    This is memory-efficient and perfect for free-tier deployments.
     """
-    
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-        self.model_name = model_name
-        # Load the model locally (downloads on first run)
-        self.model = SentenceTransformer(self.model_name)
-        # In-memory LRU cache for single text embeddings (max 1000 unique queries)
-        self._embed_cache: dict = {}
+    def __init__(self):
+        # Initialize OpenAI client
+        self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        self.model = "text-embedding-3-small" # 1536 dimensions
+        self._cache = {}
 
     def embed_text(self, text: str) -> List[float]:
-        """Generate an embedding for a single piece of text, with caching."""
-        if text in self._embed_cache:
-            return self._embed_cache[text]
-        
-        embedding = self.model.encode(text).tolist()
-        
-        # Evict oldest entry if cache is full
-        if len(self._embed_cache) >= 1000:
-            oldest_key = next(iter(self._embed_cache))
-            del self._embed_cache[oldest_key]
-        
-        self._embed_cache[text] = embedding
-        return embedding
+        """Generate an embedding for a single string using OpenAI."""
+        if not text:
+            return []
+            
+        # Check cache to save money/time
+        if text in self._cache:
+            return self._cache[text]
+            
+        try:
+            response = self.client.embeddings.create(
+                input=[text],
+                model=self.model
+            )
+            embedding = response.data[0].embedding
+            
+            # Simple LRU cache management
+            if len(self._cache) > 1000:
+                self._cache.clear()
+            self._cache[text] = embedding
+            
+            return embedding
+        except Exception as e:
+            print(f"Embedding error: {e}")
+            # Return zero vector as fallback
+            return [0.0] * 1536
 
-    def embed_texts(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for a batch of texts with batch_size optimization."""
+    def embed_batch(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for a batch of strings."""
         if not texts:
             return []
-        embeddings = self.model.encode(texts, batch_size=32)
-        return embeddings.tolist()
+            
+        try:
+            response = self.client.embeddings.create(
+                input=texts,
+                model=self.model
+            )
+            return [item.embedding for item in response.data]
+        except Exception as e:
+            print(f"Batch embedding error: {e}")
+            return [[0.0] * 1536 for _ in texts]
