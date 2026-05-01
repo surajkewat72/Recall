@@ -1,4 +1,6 @@
+import os
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.router import api_router
@@ -23,6 +25,9 @@ def create_app() -> FastAPI:
 
     # Include API router
     app.include_router(api_router, prefix=settings.API_V1_STR)
+
+    os.makedirs("app/static", exist_ok=True)
+    app.mount("/", StaticFiles(directory="app/static", html=True), name="static")
 
     @app.get("/health", tags=["system"])
     def health_check():

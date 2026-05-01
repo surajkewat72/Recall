@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     
     # External APIs
     OPENAI_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
     
     # GDrive Settings
     GDRIVE_CREDENTIALS_FILE: str = "credentials.json"
