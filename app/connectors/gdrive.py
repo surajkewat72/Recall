@@ -24,21 +24,31 @@ class GoogleDriveConnector:
     def authenticate(self):
         """Authenticate with Google Drive API (supports Service Account and OAuth)."""
         # 1. Try Service Account (Production/Deployment method)
-        if os.path.exists(self.credentials_file):
+        creds_json = os.getenv("GDRIVE_SERVICE_ACCOUNT_JSON")
+        
+        if creds_json or os.path.exists(self.credentials_file):
             try:
-                # Check if it's a service account file
                 import json
-                with open(self.credentials_file, 'r') as f:
-                    data = json.load(f)
+                if creds_json:
+                    print("Authenticating with Service Account from Environment Variable...")
+                    data = json.loads(creds_json)
+                    creds = service_account.Credentials.from_service_account_info(
+                        data, scopes=SCOPES
+                    )
+                else:
+                    with open(self.credentials_file, 'r') as f:
+                        data = json.load(f)
                     if data.get('type') == 'service_account':
-                        print("Authenticating with Service Account...")
+                        print("Authenticating with Service Account from File...")
                         creds = service_account.Credentials.from_service_account_file(
                             self.credentials_file, scopes=SCOPES
                         )
-                        self.service = build('drive', 'v3', credentials=creds)
-                        return
-            except Exception:
-                pass # Fall back to OAuth if service account fails
+                
+                if creds:
+                    self.service = build('drive', 'v3', credentials=creds)
+                    return
+            except Exception as e:
+                print(f"Service Account failed: {e}")
 
         # 2. Try OAuth (Local testing method)
         creds = None
